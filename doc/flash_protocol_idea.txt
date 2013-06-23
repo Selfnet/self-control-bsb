@@ -1,0 +1,115 @@
+BSB - User Application Flash programming
+----------------------------------------------
+
+ToDo: Define Protocol number in ID for flash protocol (low priority).
+
+data frame for flash protocol:
+
+	data frame:
+	| 16bit packet counter | 6 byte of data |
+	
+	command frame (odd commands are acks to even commands):
+	| 0xFFFF | command byte | 5 byte command payload |
+	
+commands:
+	0x00	request application reset
+	0x01	ack reset
+	0x02	announce bootloader ready
+	0x03	announce bootloader error
+	0x04	request app flash
+	0x05	ack app flash - payload: | 16bit flash size | 16bit batchsize N | 8bit bootloader version | 
+	0x06	give flash details - payload: | 32bit num of Bytes | 32bit num M of batches |
+	0x07	ack flash details
+	0x08	Batch N ready to send - payload: | 32bit N |
+	0x09	ack batch N ready to receive - payload: | 32bit N |
+	0x0A	Batch N completed - payload: | 32bit N |
+	0x0B	ack batch N completed - payload: | 32bit N |
+	0x0C	give flash CRC - payload: | 64bit CRC ? |
+	0x0D	ack flash CRC - payload: | 64bit CRC ? |
+	0x0E	start application
+	0x0F	ack start application
+
+
+
+
+
+Transaction Protocol for flashing new application firmware
+
+       Master                                   Node
+
+1. Negotiate Flash Details
+
+         |		Request Application Reset
+         |--------------------------------------->
+         |		Ack App Reset
+         |<--------------------------------------
+         |
+         |
+         |
+         |		Announce Bootloader ready (wait for 100ms before launching Application)
+         |<--------------------------------------
+    (0)  |		Request application flash
+         |--------------------------------------->
+         |		Ack app flash + (Batchsize N (16bit), BL-Ver)
+         |<--------------------------------------
+         |		Details: Num Bytes(32bit) + Num Batches M(32bit)
+         |--------------------------------------->
+         |		Ack Details
+         |<--------------------------------------
+         |
+
+2. Send App in M Batches of N Packets of 6 Byte
+   Repeat failed batches as a whole (no single packet retransfer)
+ 
+    (1)  |		Batch 0 ready to send
+         |--------------------------------------->
+         |		Ack Batch 0 ready
+         |<--------------------------------------
+         |
+         |
+         |		Batch 0 Packet 0
+         |--------------------------------------->
+         |		Batch 0 Packet 1
+         |--------------------------------------->
+         |		...
+         |--------------------------------------->
+         |		Batch 0 Packet N
+         |--------------------------------------->		 
+         |
+         |
+         |		Batch 0 complete
+         |--------------------------------------->
+         |		Ack Batch 0 ( if Nack, goto (1) )
+         |<--------------------------------------
+         |
+         |		...
+         |
+         |
+    (M)  |		Batch M Packet 0
+         |--------------------------------------->
+         |		Batch M Packet 1
+         |--------------------------------------->
+         |		...
+         |--------------------------------------->
+         |		Batch M Packet N
+         |--------------------------------------->		 
+         |
+         |
+         |		Batch M complete
+         |--------------------------------------->
+         |		Ack Batch M ( if Nack, goto (M) )
+         |<--------------------------------------		 
+         |
+
+3. Finalize Transfer by checking CRC over complete Firmware
+   (Also store CRC on Node to check Application after each reset)		 
+
+         |
+         |		Send CRC
+         |--------------------------------------->
+         |		Ack CRC ( if Nack, goto (0) )
+         |<--------------------------------------
+         |		Request Application start
+         |--------------------------------------->
+         |		Ack Application Start
+         |<--------------------------------------
