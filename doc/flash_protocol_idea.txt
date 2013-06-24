@@ -5,11 +5,14 @@ ToDo: Define Protocol number in ID for flash protocol (low priority).
 
 data frame for flash protocol:
 
-	data frame:
+	transfer frame:
 	| 16bit packet counter | 6 byte of data |
 	
 	command frame (odd commands are acks to even commands):
 	| 0xFFFF | command byte | 5 byte command payload |
+
+	If packet counter is 0xFFFF, the transfer frame becomes a command frame!
+
 	
 commands:
 	0x00	request application reset
@@ -85,7 +88,13 @@ Transaction Protocol for flashing new application firmware
          |		...
          |
          |
-    (M)  |		Batch M Packet 0
+    (M)  |		Batch M ready to send
+         |--------------------------------------->
+         |		Ack Batch M ready
+         |<--------------------------------------
+         |
+         |
+         |		Batch M Packet 0
          |--------------------------------------->
          |		Batch M Packet 1
          |--------------------------------------->
